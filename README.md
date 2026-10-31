@@ -24,6 +24,12 @@ The app opens an Obsidian vault folder, finds question notes, lets you practise 
 - **Read aloud** — optional offline text-to-speech (off by default) reads the prompt and choices, the feedback after an answer, and card fronts using the device's TTS engine.
 - **Flashcards** — `Front::Back`, reversed `Front:::Back`, multi-line `?` cards and `==highlight==` cloze cards, read only from notes **without** `question_id` so the MCQ format is never affected. Cards are revealed and self-graded on the same ladder.
 
+## Install on Android
+
+On every push to `main` the CI workflow publishes the debug APK to the [latest release](https://github.com/ifriedenson/mcq-tracker-anddoid/releases/latest). Open that page on the phone, download `app-debug.apk`, allow installs from the browser when prompted, then open the file. Android 8.0 (API 26) or newer is required.
+
+The same build is attached to each Actions run as the `app-debug-apk` artifact (a zip), if you prefer that route.
+
 ## Note format
 
 A question note is Markdown with YAML frontmatter, and the `question_id` property is required. Indented below is a complete example (kept indented so this file itself never looks like a question note to the Obsidian plugin):
