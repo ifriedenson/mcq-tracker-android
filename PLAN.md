@@ -211,3 +211,6 @@ Not portable under this app's constraints (recorded, deliberately not implemente
 | 2026-10-31 | 4 | Compose UI implemented: theme, components, Today, Practice, Summary, Questions, Progress, Settings, ViewModel, SAF activity |
 | 2026-10-31 | 5 | First build: 2 Kotlin errors fixed (wrong argument type; non-suspend recursive scan). Then 3 test failures: 1 real parser bug (`- **A)** text` leaked `**` into choice text) fixed, 2 wrong test expectations corrected |
 | 2026-10-31 | 6 | Green build: 56 tests, 0 failures, debug APK produced; README + CI added |
+| 2026-10-31 | 7 | Phase B research: 8 MIT plugins licence-verified via the GitHub API (§14.1); Anki-sync and AI plugins recorded as not portable under the no-network constraint |
+| 2026-10-31 | 8 | Batches 1–6 implemented and pushed (`af9b65f` … `0ec2f1c`); suite grew 56 → 83 tests, all green |
+| 2026-10-31 | 9 | Lint pass (`lintDebug`): added an adaptive launcher icon with a monochrome layer and removed a redundant activity label. Seven warnings remain: six GradleDependency notices, deliberately not applied so the handoff's pinned versions stay put, and one `ObsoleteSdkInt` on `mipmap-anydpi-v26` — that qualifier is required by AAPT2 for `<adaptive-icon>` (moving it to `mipmap-anydpi` fails resource linking), so the warning is accepted rather than suppressed |
