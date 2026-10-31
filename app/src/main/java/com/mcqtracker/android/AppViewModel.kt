@@ -11,6 +11,7 @@ import androidx.lifecycle.viewModelScope
 import com.mcqtracker.android.data.Flashcard
 import com.mcqtracker.android.data.NoteWriter
 import com.mcqtracker.android.data.Progress
+import com.mcqtracker.android.data.ProgressCsv
 import com.mcqtracker.android.data.ProgressStore
 import com.mcqtracker.android.data.Question
 import com.mcqtracker.android.data.QuestionMode
@@ -460,6 +461,29 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     questions = state.questions.map { if (it.key == refreshed.key) refreshed else it },
                 )
             }
+        }
+    }
+
+    /** Writes a CSV snapshot to a user-chosen document; nothing leaves the device. */
+    fun exportCsv(uri: Uri) {
+        val snapshot = ProgressCsv.build(state.questions)
+        val count = state.questions.size
+        viewModelScope.launch {
+            val written = withContext(Dispatchers.IO) {
+                runCatching {
+                    val out = getApplication<Application>().contentResolver.openOutputStream(uri)
+                        ?: return@runCatching false
+                    out.use { it.write(snapshot.toByteArray(Charsets.UTF_8)) }
+                    true
+                }.getOrDefault(false)
+            }
+            state = state.copy(
+                message = if (written) {
+                    "Exported $count questions to CSV."
+                } else {
+                    "Could not write that file."
+                },
+            )
         }
     }
 

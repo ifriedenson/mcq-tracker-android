@@ -1,5 +1,7 @@
 package com.mcqtracker.android.ui
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -373,6 +375,11 @@ fun ProgressScreen(viewModel: AppViewModel) {
 @Composable
 fun SettingsScreen(viewModel: AppViewModel, onPickFolder: () -> Unit) {
     val state = viewModel.state
+    val exportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("text/csv"),
+    ) { uri ->
+        if (uri != null) viewModel.exportCsv(uri)
+    }
 
     Column(
         modifier = Modifier
@@ -397,6 +404,22 @@ fun SettingsScreen(viewModel: AppViewModel, onPickFolder: () -> Unit) {
             }
             Spacer(Modifier.height(6.dp))
             OutlinedButton(onClick = viewModel::useSampleVault) { Text("Use sample vault") }
+        }
+
+        Spacer(Modifier.height(12.dp))
+        AppCard {
+            Text(text = "Export progress", style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = "Writes a CSV snapshot of every question's attempts, accuracy, next review and error tags. You choose the file. It stays on your device; nothing is uploaded.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(
+                onClick = { exportLauncher.launch("mcq-tracker-progress.csv") },
+                enabled = state.questions.isNotEmpty(),
+            ) { Text("Export CSV") }
         }
 
         Spacer(Modifier.height(12.dp))

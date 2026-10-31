@@ -19,6 +19,7 @@ The app opens an Obsidian vault folder, finds question notes, lets you practise 
 - **Screens** — Today, Questions, Progress, Settings, plus a practice screen and session summary.
 - **Stats** — streak, accuracy, attempts, last-7-days chart, 30-day activity heatmap, four-week retention trend, per-skill accuracy.
 - **Upcoming schedule** — a 14-day forward grid of reviews due, with overdue and new questions folded into today.
+- **CSV export** — save a snapshot of every question's attempts, accuracy, next review and error tags to a file you choose, using the system document picker.
 - **Flags and leeches** — flag questions locally (never written to the note) and filter by them; a question missed four or more times in a row is surfaced as a leech.
 - **Read aloud** — optional offline text-to-speech (off by default) reads the prompt and choices, the feedback after an answer, and card fronts using the device's TTS engine.
 - **Flashcards** — `Front::Back`, reversed `Front:::Back`, multi-line `?` cards and `==highlight==` cloze cards, read only from notes **without** `question_id` so the MCQ format is never affected. Cards are revealed and self-graded on the same ladder.
@@ -121,7 +122,7 @@ CI runs the same two tasks on every push and pull request and uploads the debug 
 
 ## Limitations (v1)
 
-- No image occlusion, AI question generation, imports, or Anki/CSV export and sync; those need a desktop Anki instance or network access.
+- No image occlusion, AI question generation, imports, or Anki export/sync; those need a desktop Anki instance or network access. CSV export is one-way progress data — it cannot be imported back.
 - Calendar-style review is limited to the forward 14-day due schedule; there is no arbitrary-date review.
 - No native FSRS or SM-2 scheduling — those notes are read-only.
 - No LaTeX/MathJax rendering; Markdown is reduced to readable plain text.
