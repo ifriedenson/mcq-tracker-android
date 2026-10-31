@@ -275,6 +275,11 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         startPractice(keys)
     }
 
+    fun startPriorityQueue() {
+        val keys = Stats.priorityQueue(state.questions, LocalDate.now()).map { it.key }
+        startPractice(keys)
+    }
+
     fun startAllQuestions() = startPractice(state.questions.map { it.key })
 
     fun startMissed() {

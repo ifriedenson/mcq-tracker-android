@@ -211,6 +211,85 @@ class StatsTest {
     }
 
     @Test
+    fun `priority queue ranks leeches then missed then due then new`() {
+        val leechRows = (0 until 4).map { index ->
+            HistoryRow(
+                timestamp = "2026-10-2${index}T10:00:00",
+                result = "incorrect",
+                seconds = 10,
+                chosen = "A",
+                confidence = 2,
+                errorType = "",
+                attemptId = "leech-$index",
+            )
+        }
+        val leech = question(
+            "leech",
+            progress = Progress(attempts = 4, history = leechRows, lastResult = "incorrect"),
+        )
+        val missed = question(
+            "missed",
+            progress = Progress(
+                attempts = 2,
+                correctCount = 0,
+                lastResult = "incorrect",
+                history = listOf(row("2026-10-29", "incorrect")),
+            ),
+            nextReview = today.minusDays(1),
+        )
+        val due = question(
+            "due",
+            progress = Progress(attempts = 2, correctCount = 2, history = listOf(row("2026-10-20"))),
+            nextReview = today.minusDays(2),
+        )
+        val fresh = question("new")
+        val future = question(
+            "future",
+            progress = Progress(attempts = 1, correctCount = 1, history = listOf(row("2026-10-30"))),
+            nextReview = today.plusDays(9),
+        )
+
+        val order = Stats.priorityQueue(listOf(future, fresh, due, missed, leech), today).map { it.questionId }
+        assertEquals(listOf("leech", "missed", "due", "new", "future"), order)
+    }
+
+    @Test
+    fun `priority queue skips excluded questions`() {
+        val excluded = question(
+            "excluded",
+            status = "excluded",
+            progress = Progress(
+                attempts = 2,
+                lastResult = "incorrect",
+                history = listOf(row("2026-10-29", "incorrect")),
+            ),
+        )
+        val normal = question("normal")
+        assertEquals(
+            listOf("normal"),
+            Stats.priorityQueue(listOf(excluded, normal), today).map { it.questionId },
+        )
+    }
+
+    @Test
+    fun `priority score rewards error tags`() {
+        val plain = question(
+            "plain",
+            progress = Progress(
+                attempts = 1,
+                lastResult = "incorrect",
+                history = listOf(row("2026-10-30", "incorrect")),
+            ),
+            nextReview = today.minusDays(2),
+        )
+        val tagged = plain.copy(
+            questionId = "tagged",
+            progress = plain.progress.copy(lastErrorType = "careless"),
+        )
+        assertTrue(Stats.priorityScore(tagged, today) > Stats.priorityScore(plain, today))
+    }
+
+    @Test
     fun `scheduler management is detected from the property or existing state`() {
         assertTrue(Stats.isSchedulerManaged("fsrs", false))
         assertTrue(Stats.isSchedulerManaged("SM2", false))

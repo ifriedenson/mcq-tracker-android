@@ -64,6 +64,36 @@ object Stats {
         )
     }
 
+    /**
+     * Urgency weighting for the priority queue (Incremental Writing parity):
+     * leeches first, then misses, then overdue reviews, then new questions,
+     * with bonuses for overdue days and a recorded error tag.
+     */
+    fun priorityScore(question: Question, today: LocalDate): Int {
+        var score = when {
+            isLeech(question) -> 60
+            isMissed(question) -> 40
+            isDue(question, today) && !isNew(question) -> 30
+            isNew(question) -> 20
+            else -> 10
+        }
+        val next = question.progress.nextReview
+        if (next != null && next.isBefore(today)) {
+            score += minOf(today.toEpochDay() - next.toEpochDay(), 10L).toInt()
+        }
+        if (question.progress.lastErrorType.isNotBlank()) score += 5
+        return score
+    }
+
+    /** Queueable questions ordered by [priorityScore], then by how overdue they are. */
+    fun priorityQueue(questions: List<Question>, today: LocalDate): List<Question> =
+        questions.filter { isQueueable(it, today) }
+            .sortedWith(
+                compareByDescending<Question> { priorityScore(it, today) }
+                    .thenBy { it.progress.nextReview ?: LocalDate.MAX }
+                    .thenBy { it.questionId },
+            )
+
     fun overview(questions: List<Question>, today: LocalDate): Overview {
         val due = questions.count { isDue(it, today) }
         val fresh = questions.count { isNew(it) && isQueueable(it, today) }

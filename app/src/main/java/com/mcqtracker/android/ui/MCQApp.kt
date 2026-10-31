@@ -242,6 +242,16 @@ fun TodayScreen(viewModel: AppViewModel) {
             }
         }
 
+        val priorityCount = Stats.priorityQueue(state.questions, today).size
+        Spacer(Modifier.height(10.dp))
+        OutlinedButton(
+            onClick = { viewModel.startPriorityQueue() },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = priorityCount > 0,
+        ) {
+            Text("Priority review ($priorityCount)")
+        }
+
         Spacer(Modifier.height(22.dp))
         SectionHeader(
             title = "Question bank",
