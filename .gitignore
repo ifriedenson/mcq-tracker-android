@@ -1,0 +1,24 @@
+# Build outputs
+.gradle/
+build/
+dist/
+captures/
+.externalNativeBuild/
+.cxx/
+.kotlin/
+
+# Local configuration (contains the SDK path)
+local.properties
+
+# IDE
+.idea/
+*.iml
+
+# OS noise
+.DS_Store
+
+# Secrets — never commit these
+.env
+keystore.properties
+*.jks
+*.keystore

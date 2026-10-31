@@ -1,0 +1,27 @@
+---
+question_id: SAMPLE-004
+course: Sample Course
+skill: Chemistry
+difficulty: medium
+choices: 4
+answer: C
+target_seconds: 60
+---
+
+## Question
+
+A solution of hydrochloric acid has a concentration of 0.001 M. What is its approximate pH?
+
+## Answer Choices
+
+- A. 1
+- B. 2
+- C. 3
+- D. 11
+
+## Answer
+
+> [!answer]- Reveal answer
+> **Correct Answer: C**
+>
+> HCl is a strong acid, so [H+] equals 10^-3 M. The pH is the negative log of that value, which is 3.

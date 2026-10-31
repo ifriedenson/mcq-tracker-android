@@ -1,0 +1,27 @@
+---
+question_id: SAMPLE-002
+course: Sample Course
+skill: Algebra
+difficulty: easy
+choices: 4
+answer: C
+target_seconds: 45
+---
+
+## Question
+
+If 3x + 5 = 20, what is the value of x?
+
+## Answer Choices
+
+- A. 3
+- B. 4
+- C. 5
+- D. 6
+
+## Answer
+
+> [!answer]- Reveal answer
+> **Correct Answer: C**
+>
+> Subtract 5 from both sides to get 3x = 15, then divide by 3 to get x = 5.

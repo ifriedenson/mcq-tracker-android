@@ -1,0 +1,25 @@
+---
+question_id: SAMPLE-003
+course: Sample Course
+skill: Biology
+difficulty: easy
+question_type: true_false
+answer: True
+target_seconds: 20
+---
+
+## Question
+
+Mitochondria are the organelles primarily responsible for producing ATP in a eukaryotic cell.
+
+## Answer Choices
+
+- A. True
+- B. False
+
+## Answer
+
+> [!answer]- Reveal answer
+> **Correct Answer: True**
+>
+> Oxidative phosphorylation happens on the inner mitochondrial membrane, which is why mitochondria are called the cell's powerhouse.
