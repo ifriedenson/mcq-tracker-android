@@ -181,6 +181,36 @@ class StatsTest {
     }
 
     @Test
+    fun `activity window has the requested length and counts attempts`() {
+        val rows = listOf(row("2026-10-31"), row("2026-10-22"))
+        val q = question("activity", progress = Progress(attempts = 2, correctCount = 2, history = rows))
+        val month = Stats.activity(listOf(q), today, 30)
+        assertEquals(30, month.size)
+        assertEquals(2, month.sumOf { it.count })
+        assertEquals(1, month.last().count)
+        assertEquals(0, month.first().count)
+    }
+
+    @Test
+    fun `retention buckets attempts into weeks`() {
+        val rows = listOf(
+            row("2026-10-31"),
+            row("2026-10-23", "incorrect"),
+            row("2026-10-11"),
+        )
+        val q = question("retention", progress = Progress(attempts = 3, correctCount = 2, history = rows))
+        val buckets = Stats.retentionByWeek(listOf(q), today, 4)
+        assertEquals(4, buckets.size)
+        assertEquals(0, buckets[0].attempts)
+        assertEquals(1, buckets[1].attempts)
+        assertEquals(1.0, buckets[1].accuracy, 0.001)
+        assertEquals(1, buckets[2].attempts)
+        assertEquals(0.0, buckets[2].accuracy, 0.001)
+        assertEquals("This week", buckets[3].label)
+        assertEquals(1, buckets[3].attempts)
+    }
+
+    @Test
     fun `scheduler management is detected from the property or existing state`() {
         assertTrue(Stats.isSchedulerManaged("fsrs", false))
         assertTrue(Stats.isSchedulerManaged("SM2", false))

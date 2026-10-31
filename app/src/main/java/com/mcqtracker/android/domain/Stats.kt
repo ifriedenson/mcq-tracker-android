@@ -24,6 +24,10 @@ object Stats {
 
     data class DayCount(val date: LocalDate, val count: Int)
 
+    data class RetentionBucket(val label: String, val attempts: Int, val correct: Int) {
+        val accuracy: Double get() = if (attempts <= 0) 0.0 else correct.toDouble() / attempts
+    }
+
     data class SkillStat(val skill: String, val attempts: Int, val correct: Int) {
         val accuracy: Double get() = if (attempts <= 0) 0.0 else correct.toDouble() / attempts
     }
@@ -99,7 +103,8 @@ object Stats {
         return count
     }
 
-    fun last7Days(questions: List<Question>, today: LocalDate): List<DayCount> {
+    /** Attempt counts for the last [days] days, oldest first. */
+    fun activity(questions: List<Question>, today: LocalDate, days: Int = 30): List<DayCount> {
         val counts = HashMap<LocalDate, Int>()
         for (question in questions) {
             for (row in question.progress.history) {
@@ -107,9 +112,35 @@ object Stats {
                 counts[day] = (counts[day] ?: 0) + 1
             }
         }
-        return (6 downTo 0).map { offset ->
+        return ((days - 1) downTo 0).map { offset ->
             val day = today.minusDays(offset.toLong())
             DayCount(day, counts[day] ?: 0)
+        }
+    }
+
+    fun last7Days(questions: List<Question>, today: LocalDate): List<DayCount> =
+        activity(questions, today, 7)
+
+    /** Accuracy per week for the last [weeks] weeks, oldest first. */
+    fun retentionByWeek(
+        questions: List<Question>,
+        today: LocalDate,
+        weeks: Int = 4,
+    ): List<RetentionBucket> {
+        val entries = questions.flatMap { question ->
+            question.progress.history.mapNotNull { row ->
+                parseDay(row.timestamp)?.let { day -> day to row.result }
+            }
+        }
+        return ((weeks - 1) downTo 0).map { offset ->
+            val end = today.minusDays(offset * 7L)
+            val start = end.minusDays(6)
+            val inWeek = entries.filter { (day, _) -> !day.isBefore(start) && !day.isAfter(end) }
+            RetentionBucket(
+                label = if (offset == 0) "This week" else "${offset}w ago",
+                attempts = inWeek.size,
+                correct = inWeek.count { it.second == "correct" },
+            )
         }
     }
 

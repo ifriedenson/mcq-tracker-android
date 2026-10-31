@@ -17,7 +17,7 @@ The app opens an Obsidian vault folder, finds question notes, lets you practise 
 - **Optional write-back** of review properties into note frontmatter.
 - **Local progress mirror** for sample notes, read-only notes and failed writes.
 - **Screens** — Today, Questions, Progress, Settings, plus a practice screen and session summary.
-- **Stats** — streak, accuracy, attempts, last-7-days chart, per-skill accuracy.
+- **Stats** — streak, accuracy, attempts, last-7-days chart, 30-day activity heatmap, four-week retention trend, per-skill accuracy.
 - **Flags and leeches** — flag questions locally (never written to the note) and filter by them; a question missed four or more times in a row is surfaced as a leech.
 - **Read aloud** — optional offline text-to-speech (off by default) reads the prompt and choices, the feedback after an answer, and card fronts using the device's TTS engine.
 - **Flashcards** — `Front::Back`, reversed `Front:::Back`, multi-line `?` cards and `==highlight==` cloze cards, read only from notes **without** `question_id` so the MCQ format is never affected. Cards are revealed and self-graded on the same ladder.

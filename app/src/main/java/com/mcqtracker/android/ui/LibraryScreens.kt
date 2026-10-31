@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -187,6 +188,76 @@ fun ProgressScreen(viewModel: AppViewModel) {
                         )
                     }
                 }
+            }
+        }
+
+        Spacer(Modifier.height(20.dp))
+        SectionHeader(title = "Last 30 days")
+        Spacer(Modifier.height(8.dp))
+        AppCard {
+            val month = Stats.activity(state.questions, today, 30)
+            val max = month.maxOfOrNull { it.count }?.coerceAtLeast(1) ?: 1
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                month.chunked(10).forEach { weekRow ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        weekRow.forEach { day ->
+                            val alpha = if (day.count == 0) {
+                                0.08f
+                            } else {
+                                0.25f + 0.75f * (day.count.toFloat() / max)
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .clip(RoundedCornerShape(5.dp))
+                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = alpha)),
+                            )
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "${month.sumOf { it.count }} attempts in the last 30 days",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        Spacer(Modifier.height(20.dp))
+        SectionHeader(title = "Retention")
+        Spacer(Modifier.height(8.dp))
+        AppCard {
+            val buckets = Stats.retentionByWeek(state.questions, today)
+            buckets.forEach { bucket ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(text = bucket.label, style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        text = "${formatPercent(bucket.accuracy)} · ${bucket.correct}/${bucket.attempts}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Spacer(Modifier.height(4.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(50))
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(bucket.accuracy.toFloat().coerceIn(0f, 1f))
+                            .height(6.dp)
+                            .clip(RoundedCornerShape(50))
+                            .background(MaterialTheme.colorScheme.tertiary),
+                    )
+                }
+                Spacer(Modifier.height(8.dp))
             }
         }
 
