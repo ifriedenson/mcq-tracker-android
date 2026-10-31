@@ -21,8 +21,19 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+      # android-actions/setup-android@v3 dies on "Failed to find package
+      # 'tools'" because Google's repository no longer publishes that package.
+      # The runner image already ships an SDK, so use it and install only the
+      # packages this build needs.
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+        run: |
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
+          yes | "$SDK/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null 2>&1 || true
+          "$SDK/cmdline-tools/latest/bin/sdkmanager" --install \
+            "platform-tools" "platforms;android-35" "build-tools;35.0.0" > /dev/null
+          echo "Android SDK ready at $SDK"
 
       - name: Unit tests
         run: ./gradlew testDebugUnitTest --stacktrace
