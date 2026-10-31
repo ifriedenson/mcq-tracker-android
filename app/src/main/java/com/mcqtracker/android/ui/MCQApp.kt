@@ -41,6 +41,7 @@ fun MCQApp(viewModel: AppViewModel, onPickFolder: () -> Unit) {
         when (state.screen) {
             Screen.PRACTICE -> PracticeScreen(viewModel)
             Screen.SUMMARY -> SummaryScreen(viewModel)
+            Screen.CARD_PRACTICE -> CardPracticeScreen(viewModel)
             else -> TodayScreen(viewModel)
         }
         return
@@ -59,6 +60,7 @@ fun MCQApp(viewModel: AppViewModel, onPickFolder: () -> Unit) {
             }
             Box(modifier = Modifier.fillMaxSize()) {
                 when (state.screen) {
+                    Screen.CARDS -> CardsScreen(viewModel)
                     Screen.QUESTIONS -> QuestionsScreen(viewModel)
                     Screen.PROGRESS -> ProgressScreen(viewModel)
                     Screen.SETTINGS -> SettingsScreen(viewModel, onPickFolder)
@@ -100,6 +102,7 @@ private fun MessageBanner(message: String, onDismiss: () -> Unit) {
 private fun BottomBar(current: Screen, onNavigate: (Screen) -> Unit) {
     val tabs = listOf(
         Screen.TODAY to "Today",
+        Screen.CARDS to "Cards",
         Screen.QUESTIONS to "Questions",
         Screen.PROGRESS to "Progress",
         Screen.SETTINGS to "Settings",

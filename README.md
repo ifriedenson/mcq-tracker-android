@@ -19,6 +19,7 @@ The app opens an Obsidian vault folder, finds question notes, lets you practise 
 - **Screens** — Today, Questions, Progress, Settings, plus a practice screen and session summary.
 - **Stats** — streak, accuracy, attempts, last-7-days chart, per-skill accuracy.
 - **Flags and leeches** — flag questions locally (never written to the note) and filter by them; a question missed four or more times in a row is surfaced as a leech.
+- **Flashcards** — `Front::Back`, reversed `Front:::Back`, multi-line `?` cards and `==highlight==` cloze cards, read only from notes **without** `question_id` so the MCQ format is never affected. Cards are revealed and self-graded on the same ladder.
 
 ## Note format
 

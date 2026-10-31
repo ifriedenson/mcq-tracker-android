@@ -8,6 +8,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.mcqtracker.android.data.Flashcard
 import com.mcqtracker.android.data.NoteWriter
 import com.mcqtracker.android.data.Progress
 import com.mcqtracker.android.data.ProgressStore
@@ -23,7 +24,7 @@ import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.LocalDateTime
 
-enum class Screen { TODAY, PRACTICE, SUMMARY, QUESTIONS, PROGRESS, SETTINGS }
+enum class Screen { TODAY, CARDS, CARD_PRACTICE, PRACTICE, SUMMARY, QUESTIONS, PROGRESS, SETTINGS }
 
 enum class QuestionFilter(val label: String) {
     ALL("All"),
@@ -72,6 +73,9 @@ data class Summary(
 data class UiState(
     val screen: Screen = Screen.TODAY,
     val questions: List<Question> = emptyList(),
+    val cards: List<Flashcard> = emptyList(),
+    val activeCardKey: String? = null,
+    val cardRevealed: Boolean = false,
     val sampleMode: Boolean = true,
     val vaultUri: String? = null,
     val vaultLabel: String = "Sample vault",
@@ -95,7 +99,8 @@ data class UiState(
 ) {
     val currentKey: String? get() = practiceKeys.getOrNull(practiceIndex)
     val currentQuestion: Question? get() = currentKey?.let { key -> questions.firstOrNull { it.key == key } }
-    val overlay: Boolean get() = screen == Screen.PRACTICE || screen == Screen.SUMMARY
+    val activeCard: Flashcard? get() = activeCardKey?.let { key -> cards.firstOrNull { it.key == key } }
+    val overlay: Boolean get() = screen == Screen.PRACTICE || screen == Screen.SUMMARY || screen == Screen.CARD_PRACTICE
 }
 
 class AppViewModel(application: Application) : AndroidViewModel(application) {
@@ -126,8 +131,10 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         state = state.copy(loading = true, message = null)
         viewModelScope.launch {
             val samples = repo.loadSamples(store)
+            val cards = repo.loadSampleCards(store)
             state = state.copy(
                 questions = samples,
+                cards = cards,
                 sampleMode = true,
                 vaultUri = null,
                 vaultLabel = "Sample vault",
@@ -155,6 +162,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             }.getOrNull() ?: uri.lastPathSegment ?: "Vault"
             state = state.copy(
                 questions = result.questions,
+                cards = result.cards,
                 sampleMode = false,
                 vaultUri = uri.toString(),
                 vaultLabel = label,
@@ -441,6 +449,61 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     fun clearMessage() {
         state = state.copy(message = null)
+    }
+
+    // ---- flashcards -----------------------------------------------------
+
+    fun goToCards() {
+        state = state.copy(screen = Screen.CARDS)
+    }
+
+    fun startCard(key: String) {
+        state = state.copy(
+            screen = Screen.CARD_PRACTICE,
+            activeCardKey = key,
+            cardRevealed = false,
+            startedAtMillis = System.currentTimeMillis(),
+        )
+    }
+
+    fun revealCard() {
+        state = state.copy(cardRevealed = true)
+    }
+
+    fun closeCard() {
+        state = state.copy(
+            screen = Screen.CARDS,
+            activeCardKey = null,
+            cardRevealed = false,
+        )
+    }
+
+    /** Self-graded card review on the same ladder as questions. */
+    fun gradeCard(correct: Boolean) {
+        val card = state.activeCard ?: return
+        val now = LocalDateTime.now()
+        val seconds = if (state.startedAtMillis == 0L) {
+            1
+        } else {
+            (((System.currentTimeMillis() - state.startedAtMillis) / 1000L).toInt()).coerceAtLeast(1)
+        }
+        val outcome = Scheduler.apply(
+            previous = card.progress,
+            correct = correct,
+            confidence = 2,
+            seconds = seconds,
+            chosen = "",
+            today = now.toLocalDate(),
+            now = now,
+        )
+        val updated = card.withProgress(outcome.progress)
+        store.save(updated.key, outcome.progress)
+        state = state.copy(
+            cards = state.cards.map { if (it.key == updated.key) updated else it },
+            screen = Screen.CARDS,
+            activeCardKey = null,
+            cardRevealed = false,
+        )
     }
 
     companion object {

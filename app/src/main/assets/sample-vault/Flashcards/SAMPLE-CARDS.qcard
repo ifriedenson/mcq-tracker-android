@@ -1,0 +1,14 @@
+# Sample flashcards
+# Basic: Front::Back
+Capital of France::Paris
+
+# Reversed: Front:::Back produces cards in both directions
+Photosynthesis:::The process by which plants convert light energy into chemical energy
+
+# Multi-line: a line containing only ? separates front and back
+What is 2 + 2?
+?
+4
+
+# Cloze: ==highlighted== text becomes the missing answer
+The mitochondria is the ==powerhouse== of the cell.

@@ -20,6 +20,7 @@ class VaultRepository(private val context: Context) {
         val truncated: Boolean,
         val filesScanned: Int,
         val readOnly: Boolean,
+        val cards: List<Flashcard> = emptyList(),
     )
 
     suspend fun loadSamples(store: ProgressStore): List<Question> = withContext(Dispatchers.IO) {
@@ -36,6 +37,19 @@ class VaultRepository(private val context: Context) {
         }.sortedBy { it.questionId }
     }
 
+    suspend fun loadSampleCards(store: ProgressStore): List<Flashcard> = withContext(Dispatchers.IO) {
+        val local = store.loadAll()
+        val names = context.assets.list("sample-vault/Flashcards").orEmpty().filter { it.endsWith(".qcard") }
+        names.flatMap { name ->
+            val text = runCatching {
+                context.assets.open("sample-vault/Flashcards/$name").bufferedReader().use { it.readText() }
+            }.getOrNull()
+            if (text == null) emptyList() else FlashcardParser.parse(text, Question.SAMPLE_SOURCE)
+        }.map { card ->
+            card.withProgress(ProgressMerge.merge(card.progress, local[card.key]))
+        }
+    }
+
     suspend fun scanTree(
         treeUri: Uri,
         store: ProgressStore,
@@ -44,6 +58,7 @@ class VaultRepository(private val context: Context) {
         val root = DocumentFile.fromTreeUri(context, treeUri) ?: return@withContext ScanResult(emptyList(), false, 0, true)
         val local = store.loadAll()
         val parsed = mutableListOf<Question>()
+        val foundCards = mutableListOf<Flashcard>()
         var files = 0
         var truncated = false
         val readOnly = !root.canWrite() || !writeEnabled
@@ -65,8 +80,12 @@ class VaultRepository(private val context: Context) {
                     }
                     if (child.length() > MAX_BYTES) continue
                     val text = readText(child) ?: continue
-                    val question = NoteParser.parse(text, treeUri.toString(), child.uri.toString()) ?: continue
-                    parsed += question
+                    val question = NoteParser.parse(text, treeUri.toString(), child.uri.toString())
+                    if (question != null) {
+                        parsed += question
+                    } else {
+                        foundCards += FlashcardParser.parse(text, treeUri.toString(), child.uri.toString())
+                    }
                 }
             }
         }
@@ -75,7 +94,10 @@ class VaultRepository(private val context: Context) {
         val merged = NoteParser.borrowStimuli(parsed).map { question ->
             question.withProgress(ProgressMerge.merge(question.progress, local[question.key]))
         }
-        ScanResult(merged.sortedBy { it.questionId }, truncated, files, readOnly)
+        val mergedCards = foundCards.map { card ->
+            card.withProgress(ProgressMerge.merge(card.progress, local[card.key]))
+        }
+        ScanResult(merged.sortedBy { it.questionId }, truncated, files, readOnly, mergedCards)
     }
 
     suspend fun readText(uri: Uri): String? = withContext(Dispatchers.IO) {

@@ -189,7 +189,7 @@ Not portable under this app's constraints (recorded, deliberately not implemente
 ### 14.2 Implementation batches
 
 - [x] **Batch 1 — flags and leeches.** Local flag toggle (never written to the note), `Flagged` filter, consecutive-miss detection with a `Leech` pill and a Progress-screen callout. Tests added.
-- [ ] **Batch 2 — cloze and basic flashcards.** Parse `==highlight==` cloze cards and `Question::Answer` cards from notes that do **not** carry `question_id`, as a separate question source that never disturbs MCQ Tracker notes.
+- [x] **Batch 2 — cloze and basic flashcards.** `FlashcardParser` reads `Front::Back`, `Front:::Back` (both directions), multi-line `?` cards and `==highlight==` cloze cards **only from notes without `question_id`**, so MCQ Tracker notes are untouched. New Cards tab, reveal-then-self-grade practice on the same ladder, and bundled sample cards (`SAMPLE-CARDS.qcard`). 7 parser tests added.
 - [ ] **Batch 3 — text-to-speech.** Offline Android `TextToSpeech` for the prompt, stimulus and explanation (LearnKit parity).
 - [ ] **Batch 4 — 30-day activity heatmap** and retention trend (LearnKit analytics parity).
 - [ ] **Batch 5 — matching and fill-in grading** (Quiz Generator parity), keeping MCQ as the primary mode.
