@@ -1,6 +1,7 @@
 package com.mcqtracker.android.domain
 
 import com.mcqtracker.android.data.Choice
+import com.mcqtracker.android.data.MatchPair
 import com.mcqtracker.android.data.Question
 import com.mcqtracker.android.data.QuestionMode
 import org.junit.Assert.assertEquals
@@ -64,6 +65,58 @@ class AnswerGraderTest {
         assertTrue(AnswerGrader.grade(q, emptyList(), selfGrade = true).correct)
         assertFalse(AnswerGrader.grade(q, emptyList(), selfGrade = false).correct)
         assertEquals("", AnswerGrader.grade(q, emptyList(), selfGrade = true).chosen)
+    }
+
+    @Test
+    fun `fill in compares normalized text and accepts alternates`() {
+        val q = question(QuestionMode.FILL_IN, "3 | three")
+        assertTrue(AnswerGrader.grade(q, emptyList(), typedAnswer = "3").correct)
+        assertTrue(AnswerGrader.grade(q, emptyList(), typedAnswer = "  THREE ").correct)
+        assertTrue(AnswerGrader.grade(q, emptyList(), typedAnswer = "Three.").correct)
+        assertFalse(AnswerGrader.grade(q, emptyList(), typedAnswer = "4").correct)
+        assertFalse(AnswerGrader.grade(q, emptyList(), typedAnswer = "").correct)
+    }
+
+    @Test
+    fun `matching requires every pair to be correct`() {
+        val q = Question(
+            sourceKey = "test",
+            questionId = "M1",
+            mode = QuestionMode.MATCHING,
+            pairs = listOf(
+                MatchPair("Mitochondria", "Powerhouse"),
+                MatchPair("Ribosome", "Protein synthesis"),
+            ),
+            answerKey = "",
+        )
+        assertTrue(
+            AnswerGrader.grade(
+                q,
+                emptyList(),
+                matching = mapOf(
+                    "Mitochondria" to "Powerhouse",
+                    "Ribosome" to "Protein synthesis",
+                ),
+            ).correct,
+        )
+        assertFalse(
+            AnswerGrader.grade(
+                q,
+                emptyList(),
+                matching = mapOf(
+                    "Mitochondria" to "Protein synthesis",
+                    "Ribosome" to "Powerhouse",
+                ),
+            ).correct,
+        )
+        assertFalse(
+            AnswerGrader.grade(q, emptyList(), matching = mapOf("Mitochondria" to "Powerhouse")).correct,
+        )
+    }
+
+    @Test
+    fun `fill in answer label is the raw key`() {
+        assertEquals("3 | three", AnswerGrader.correctAnswerLabel(question(QuestionMode.FILL_IN, "3 | three")))
     }
 
     @Test

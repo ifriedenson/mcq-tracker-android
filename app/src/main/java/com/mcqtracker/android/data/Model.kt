@@ -8,11 +8,23 @@ enum class QuestionMode {
     SELECT_ALL,
     TRUE_FALSE,
     SELF_GRADED,
+
+    /** Typed answer compared against the note's key. */
+    FILL_IN,
+
+    /** Left/right pairs, all of which must be matched correctly. */
+    MATCHING,
 }
 
 data class Choice(
     val letter: String,
     val text: String,
+)
+
+/** One left/right pairing for [QuestionMode.MATCHING]. */
+data class MatchPair(
+    val left: String,
+    val right: String,
 )
 
 /**
@@ -97,6 +109,8 @@ data class Question(
     val questionType: String = "",
     val mode: QuestionMode,
     val choices: List<Choice> = emptyList(),
+    /** Populated for matching questions; empty otherwise. */
+    val pairs: List<MatchPair> = emptyList(),
     /** Canonical key: `C`, `A, C`, `True`, `False`, or the raw key for self-graded. */
     val answerKey: String,
     val stimulus: String = "",
@@ -142,6 +156,8 @@ data class Question(
             QuestionMode.SELECT_ALL -> "Select all that apply"
             QuestionMode.TRUE_FALSE -> "True / false"
             QuestionMode.SELF_GRADED -> "Self-graded"
+            QuestionMode.FILL_IN -> "Fill in the blank"
+            QuestionMode.MATCHING -> "Matching"
         }
 
     fun withProgress(newProgress: Progress): Question = copy(progress = newProgress)

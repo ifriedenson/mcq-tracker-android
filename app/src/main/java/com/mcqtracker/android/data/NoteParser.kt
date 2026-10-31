@@ -113,7 +113,10 @@ object NoteParser {
         val sections = parseSections(fm.body)
         val choices = parseChoices(sections.choices())
         val rawKey = resolveAnswerKey(fm, sections.answer())
-        val mode = inferMode(fm.scalars["question_type"].orEmpty(), rawKey, choices)
+        var mode = inferMode(fm.scalars["question_type"].orEmpty(), rawKey, choices)
+        val pairs = if (mode == QuestionMode.MATCHING) parsePairs(choices) else emptyList()
+        // A matching question with fewer than two usable pairs is not answerable.
+        if (mode == QuestionMode.MATCHING && pairs.size < 2) mode = QuestionMode.SELF_GRADED
         val answerKey = normalizeKey(mode, rawKey, choices)
 
         val scheduler = fm.scalars["scheduler"].orEmpty()
@@ -134,6 +137,7 @@ object NoteParser {
             questionType = plain(fm.scalars["question_type"]),
             mode = mode,
             choices = choices,
+            pairs = pairs,
             answerKey = answerKey,
             stimulus = MarkdownLite.toPlainText(stimulusSection),
             prompt = prompt,
@@ -249,6 +253,17 @@ object NoteParser {
         return choices.distinctBy { it.letter }.sortedBy { it.letter }
     }
 
+    /** Splits matching choices such as `- A. Mitochondria -> Powerhouse` into pairs. */
+    fun parsePairs(choices: List<Choice>): List<MatchPair> =
+        choices.mapNotNull { choice ->
+            val parts = Regex("""\s*(?:->|→|::|=)\s*""").split(choice.text, limit = 2)
+            if (parts.size == 2 && parts[0].isNotBlank() && parts[1].isNotBlank()) {
+                MatchPair(parts[0].trim(), parts[1].trim())
+            } else {
+                null
+            }
+        }
+
     private fun cleanChoiceText(raw: String): String =
         raw.replace(Regex("""\*\*(.+?)\*\*"""), "$1")
             .replace(Regex("""^\s*[-*+]\s*"""), "")
@@ -290,6 +305,12 @@ object NoteParser {
     fun inferMode(questionType: String, rawKey: String?, choices: List<Choice>): QuestionMode {
         val type = questionType.lowercase()
         val inferred = when {
+            // Explicit fill-in types only: a bare "fill" stays self-graded per the handoff.
+            listOf("fill_in", "fill-in", "fill in the blank", "fill in the blanks", "fill in blank")
+                .any { type.contains(it) } -> QuestionMode.FILL_IN
+
+            listOf("matching", "match the", "match each").any { type.contains(it) } -> QuestionMode.MATCHING
+
             listOf("spr", "student-produced", "grid-in", "free-response", "short-answer", "numeric", "fill")
                 .any { type.contains(it) } -> QuestionMode.SELF_GRADED
 
@@ -337,7 +358,9 @@ object NoteParser {
 
     private fun normalizeKey(mode: QuestionMode, rawKey: String?, choices: List<Choice>): String {
         val raw = rawKey.orEmpty()
-        if (mode == QuestionMode.SELF_GRADED) return raw.trim()
+        if (mode == QuestionMode.SELF_GRADED || mode == QuestionMode.FILL_IN || mode == QuestionMode.MATCHING) {
+            return raw.trim()
+        }
         if (raw.isBlank()) return ""
         return AnswerTypes.canonicalKey(mode, raw, choices)
     }

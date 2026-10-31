@@ -10,7 +10,7 @@ The app opens an Obsidian vault folder, finds question notes, lets you practise 
 
 - **Vault access over the Storage Access Framework** — pick any folder, with persisted read/write permission and a read-only fallback.
 - **Bundled sample vault** so the app is usable the moment it launches.
-- **Four question modes** — multiple choice, select-all-that-apply, true/false, and self-graded (SPR, numeric, free response).
+- **Six question modes** — multiple choice, select-all-that-apply, true/false, self-graded (SPR, numeric, free response), typed fill-in with `|`-separated alternates, and matching pairs written `- A. Term -> Definition`.
 - **Queues** — due, new and missed, plus single-question practice from the bank.
 - **Grading and feedback** — automatic grading, explanations, hint toggle, confidence (Guessing / Unsure / Confident), and error tagging.
 - **Plugin-compatible scheduling** — the 1 / 3 / 7 / 21 / 60-day ladder.

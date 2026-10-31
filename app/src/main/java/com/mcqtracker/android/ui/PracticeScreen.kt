@@ -22,6 +22,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -160,6 +161,62 @@ fun PracticeScreen(viewModel: AppViewModel) {
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
+                    }
+                }
+
+                QuestionMode.FILL_IN -> {
+                    OutlinedTextField(
+                        value = state.typedAnswer,
+                        onValueChange = viewModel::setTypedAnswer,
+                        label = { Text("Your answer") },
+                        singleLine = true,
+                        enabled = outcome == null,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+
+                QuestionMode.MATCHING -> {
+                    Text(
+                        text = "Tap an item, then tap its match.",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    question.pairs.forEach { pair ->
+                        val assigned = state.matching[pair.left]
+                        val active = state.matchingSelectedLeft == pair.left
+                        AppCard(
+                            onClick = { viewModel.selectMatchingLeft(pair.left) },
+                            container = if (active) {
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                            } else {
+                                MaterialTheme.colorScheme.surface
+                            },
+                        ) {
+                            Text(text = pair.left, style = MaterialTheme.typography.titleMedium)
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                text = assigned ?: "No match selected",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Spacer(Modifier.height(6.dp))
+                    }
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        text = "Matches",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    question.pairs.map { it.right }.distinct().forEach { right ->
+                        OutlinedButton(
+                            onClick = { viewModel.assignMatchingRight(right) },
+                            enabled = outcome == null,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text(right) }
+                        Spacer(Modifier.height(4.dp))
                     }
                 }
 

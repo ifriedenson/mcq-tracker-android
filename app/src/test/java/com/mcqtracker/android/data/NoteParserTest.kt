@@ -210,6 +210,86 @@ class NoteParserTest {
     }
 
     @Test
+    fun `explicit fill_in notes are auto graded`() {
+        val note = """
+            ---
+            question_id: FILL-1
+            question_type: fill_in
+            answer: 3 | three
+            ---
+
+            ## Question
+
+            What is 1 + 2?
+        """.trimIndent()
+        val question = requireNotNull(NoteParser.parse(note, "src"))
+        assertEquals(QuestionMode.FILL_IN, question.mode)
+        assertEquals("3 | three", question.answerKey)
+    }
+
+    @Test
+    fun `a bare fill type stays self graded per the handoff contract`() {
+        val note = """
+            ---
+            question_id: FILL-2
+            question_type: fill
+            answer: 42
+            ---
+
+            ## Question
+
+            What is the answer?
+        """.trimIndent()
+        val question = requireNotNull(NoteParser.parse(note, "src"))
+        assertEquals(QuestionMode.SELF_GRADED, question.mode)
+    }
+
+    @Test
+    fun `matching notes produce left and right pairs`() {
+        val note = """
+            ---
+            question_id: MATCH-1
+            question_type: matching
+            ---
+
+            ## Question
+
+            Match each organelle to its role.
+
+            ## Answer Choices
+
+            - A. Mitochondria -> Powerhouse
+            - B. Ribosome -> Protein synthesis
+        """.trimIndent()
+        val question = requireNotNull(NoteParser.parse(note, "src"))
+        assertEquals(QuestionMode.MATCHING, question.mode)
+        assertEquals(2, question.pairs.size)
+        assertEquals("Mitochondria", question.pairs[0].left)
+        assertEquals("Powerhouse", question.pairs[0].right)
+        assertEquals("Protein synthesis", question.pairs[1].right)
+    }
+
+    @Test
+    fun `matching with fewer than two pairs downgrades to self graded`() {
+        val note = """
+            ---
+            question_id: MATCH-2
+            question_type: matching
+            ---
+
+            ## Question
+
+            Only one pair.
+
+            ## Answer Choices
+
+            - A. Left -> Right
+        """.trimIndent()
+        val question = requireNotNull(NoteParser.parse(note, "src"))
+        assertEquals(QuestionMode.SELF_GRADED, question.mode)
+    }
+
+    @Test
     fun `mcq with fewer than two choices downgrades to self graded`() {
         val note = """
             ---

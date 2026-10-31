@@ -23,6 +23,8 @@ object AnswerGrader {
         question: Question,
         selectedLetters: Collection<String>,
         selfGrade: Boolean? = null,
+        typedAnswer: String = "",
+        matching: Map<String, String> = emptyMap(),
     ): Result {
         val picked = selectedLetters.map { it.trim().uppercase() }.filter { it.isNotBlank() }.distinct().sorted()
         return when (question.mode) {
@@ -60,7 +62,43 @@ object AnswerGrader {
                 correct = selfGrade == true,
                 chosen = "",
             )
+
+            QuestionMode.FILL_IN -> {
+                // The key may list alternatives separated by "|" or ";".
+                val accepted = question.answerKey
+                    .split("|", ";")
+                    .map { normalize(it) }
+                    .filter { it.isNotEmpty() }
+                val given = normalize(typedAnswer)
+                Result(
+                    correct = given.isNotEmpty() && accepted.contains(given),
+                    chosen = typedAnswer.trim(),
+                )
+            }
+
+            QuestionMode.MATCHING -> {
+                val expected = question.pairs.associate { it.left to it.right }
+                val complete = expected.isNotEmpty() && expected.keys.all { matching.containsKey(it) }
+                val correct = complete && expected.all { (left, right) ->
+                    normalize(matching[left].orEmpty()) == normalize(right)
+                }
+                val chosen = matching.entries
+                    .sortedBy { it.key }
+                    .joinToString("; ") { "${it.key}=${it.value}" }
+                Result(correct = correct, chosen = chosen)
+            }
         }
+    }
+
+    /** Case, whitespace, quotes and trailing punctuation do not change an answer. */
+    private fun normalize(value: String): String {
+        var text = value.trim()
+        text = text.removeSurrounding("\"").removeSurrounding("'")
+        return text.lowercase()
+            .replace(Regex("""\s+"""), " ")
+            .trim()
+            .trimEnd('.', '!', ',', ';', ':', '?')
+            .trim()
     }
 
     private fun canonical(value: Boolean): String = if (value) "True" else "False"
@@ -74,10 +112,18 @@ object AnswerGrader {
             canonical(word) == question.answerKey
         }.map { it.letter }
         QuestionMode.SELF_GRADED -> emptyList()
+        QuestionMode.FILL_IN -> emptyList()
+        QuestionMode.MATCHING -> emptyList()
     }
 
     /** Human-readable correct answer for the result card. */
     fun correctAnswerLabel(question: Question): String {
+        if (question.mode == QuestionMode.FILL_IN) {
+            return question.answerKey.ifBlank { "No accepted answer recorded" }
+        }
+        if (question.mode == QuestionMode.MATCHING) {
+            return question.pairs.joinToString(", ") { "${it.left} → ${it.right}" }
+        }
         if (question.mode == QuestionMode.SELF_GRADED) {
             return question.answerKey.ifBlank { "Self-graded" }
         }

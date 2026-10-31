@@ -90,6 +90,9 @@ data class UiState(
     val practiceKeys: List<String> = emptyList(),
     val practiceIndex: Int = 0,
     val selected: Set<String> = emptySet(),
+    val typedAnswer: String = "",
+    val matching: Map<String, String> = emptyMap(),
+    val matchingSelectedLeft: String? = null,
     val confidence: Int = 2,
     val showHint: Boolean = false,
     val outcome: Submission? = null,
@@ -250,6 +253,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             practiceKeys = keys,
             practiceIndex = 0,
             selected = emptySet(),
+            typedAnswer = "",
+            matching = emptyMap(),
+            matchingSelectedLeft = null,
             confidence = 2,
             showHint = false,
             outcome = null,
@@ -311,10 +317,36 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun canSubmit(): Boolean = when (state.currentQuestion?.mode) {
-        QuestionMode.SELF_GRADED -> true
+    fun canSubmit(): Boolean = when (val question = state.currentQuestion) {
         null -> false
-        else -> state.selected.isNotEmpty()
+        else -> when (question.mode) {
+            QuestionMode.SELF_GRADED -> true
+            QuestionMode.FILL_IN -> state.typedAnswer.isNotBlank()
+            QuestionMode.MATCHING -> question.pairs.isNotEmpty() &&
+                question.pairs.all { state.matching.containsKey(it.left) }
+            else -> state.selected.isNotEmpty()
+        }
+    }
+
+    fun setTypedAnswer(value: String) {
+        if (state.outcome != null) return
+        state = state.copy(typedAnswer = value)
+    }
+
+    fun selectMatchingLeft(left: String) {
+        if (state.outcome != null) return
+        state = state.copy(
+            matchingSelectedLeft = if (state.matchingSelectedLeft == left) null else left,
+        )
+    }
+
+    fun assignMatchingRight(right: String) {
+        if (state.outcome != null) return
+        val left = state.matchingSelectedLeft ?: return
+        state = state.copy(
+            matching = state.matching + (left to right),
+            matchingSelectedLeft = null,
+        )
     }
 
     fun submit(selfGrade: Boolean? = null) {
@@ -325,7 +357,13 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         val now = LocalDateTime.now()
         val today = now.toLocalDate()
         val seconds = maxOf(1, state.elapsedSeconds)
-        val grade = AnswerGrader.grade(question, state.selected, selfGrade)
+        val grade = AnswerGrader.grade(
+            question = question,
+            selectedLetters = state.selected,
+            selfGrade = selfGrade,
+            typedAnswer = state.typedAnswer,
+            matching = state.matching,
+        )
         val outcome = Scheduler.apply(
             previous = question.progress,
             correct = grade.correct,
@@ -429,6 +467,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         state = state.copy(
             practiceIndex = nextIndex,
             selected = emptySet(),
+            typedAnswer = "",
+            matching = emptyMap(),
+            matchingSelectedLeft = null,
             confidence = 2,
             showHint = false,
             outcome = null,
@@ -458,6 +499,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             practiceKeys = emptyList(),
             practiceIndex = 0,
             selected = emptySet(),
+            typedAnswer = "",
+            matching = emptyMap(),
+            matchingSelectedLeft = null,
             outcome = null,
             session = emptyList(),
         )

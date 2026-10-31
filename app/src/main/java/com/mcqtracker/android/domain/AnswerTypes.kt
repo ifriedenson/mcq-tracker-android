@@ -72,6 +72,8 @@ object AnswerTypes {
             }
         }
         QuestionMode.SELF_GRADED -> raw.trim()
+        QuestionMode.FILL_IN -> raw.trim()
+        QuestionMode.MATCHING -> raw.trim()
     }
 
     /** True when the two sets of letters are exactly equal. */
