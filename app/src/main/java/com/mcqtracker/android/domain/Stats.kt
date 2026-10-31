@@ -12,6 +12,7 @@ object Stats {
         val due: Int = 0,
         val new: Int = 0,
         val missed: Int = 0,
+        val leeches: Int = 0,
         val attempts: Int = 0,
         val correct: Int = 0,
         val accuracy: Double = 0.0,
@@ -70,6 +71,7 @@ object Stats {
             due = due,
             new = fresh,
             missed = missed,
+            leeches = questions.count { isLeech(it) },
             attempts = attempts,
             correct = correct,
             accuracy = if (attempts == 0) 0.0 else correct.toDouble() / attempts,
@@ -134,10 +136,26 @@ object Stats {
         LocalDate.parse(timestamp.substring(0, 10))
     }.getOrNull()
 
+    /** Number of consecutive most-recent misses, newest first. */
+    fun consecutiveMisses(question: Question): Int {
+        var count = 0
+        for (row in question.progress.history.asReversed()) {
+            if (row.result == "incorrect") count++ else break
+        }
+        return count
+    }
+
+    const val LEECH_THRESHOLD = 4
+
+    /** A leech is a question missed four or more times in a row. */
+    fun isLeech(question: Question, threshold: Int = LEECH_THRESHOLD): Boolean =
+        consecutiveMisses(question) >= threshold
+
     fun matchesFilter(question: Question, filter: String, today: LocalDate): Boolean = when (filter) {
         "due" -> isDue(question, today)
         "new" -> isNew(question) && isQueueable(question, today)
         "missed" -> isMissed(question)
+        "flagged" -> question.progress.flagged
         else -> true
     }
 

@@ -138,6 +138,49 @@ class StatsTest {
     }
 
     @Test
+    fun `flagged filter matches only locally flagged questions`() {
+        val flagged = question("f1", progress = Progress(attempts = 1, flagged = true))
+        val plain = question("f2", progress = Progress(attempts = 1))
+        assertTrue(Stats.matchesFilter(flagged, "flagged", today))
+        assertFalse(Stats.matchesFilter(plain, "flagged", today))
+    }
+
+    @Test
+    fun `leeches need four consecutive misses`() {
+        fun q(vararg results: String): Question {
+            val rows = results.mapIndexed { index, result ->
+                HistoryRow(
+                    timestamp = "2026-10-2${index}T10:00:00",
+                    result = result,
+                    seconds = 10,
+                    chosen = "A",
+                    confidence = 2,
+                    errorType = "",
+                    attemptId = "id-$index",
+                )
+            }
+            return question("leech-$results", progress = Progress(attempts = rows.size, history = rows))
+        }
+
+        assertEquals(4, Stats.consecutiveMisses(q("incorrect", "incorrect", "incorrect", "incorrect")))
+        assertTrue(Stats.isLeech(q("incorrect", "incorrect", "incorrect", "incorrect")))
+        assertFalse(Stats.isLeech(q("incorrect", "incorrect", "incorrect")))
+        // a correct answer at the end breaks the run
+        assertFalse(Stats.isLeech(q("incorrect", "incorrect", "incorrect", "incorrect", "correct")))
+        assertEquals(0, Stats.consecutiveMisses(q("correct")))
+    }
+
+    @Test
+    fun `overview counts leeches`() {
+        val rows = (0 until 4).map {
+            HistoryRow("2026-10-2${it}T10:00:00", "incorrect", 10, "A", 2, "", "id-$it")
+        }
+        val leech = question("leech", progress = Progress(attempts = 4, history = rows))
+        val clean = question("clean", progress = Progress(attempts = 1))
+        assertEquals(1, Stats.overview(listOf(leech, clean), today).leeches)
+    }
+
+    @Test
     fun `scheduler management is detected from the property or existing state`() {
         assertTrue(Stats.isSchedulerManaged("fsrs", false))
         assertTrue(Stats.isSchedulerManaged("SM2", false))

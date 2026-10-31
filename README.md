@@ -18,6 +18,7 @@ The app opens an Obsidian vault folder, finds question notes, lets you practise 
 - **Local progress mirror** for sample notes, read-only notes and failed writes.
 - **Screens** — Today, Questions, Progress, Settings, plus a practice screen and session summary.
 - **Stats** — streak, accuracy, attempts, last-7-days chart, per-skill accuracy.
+- **Flags and leeches** — flag questions locally (never written to the note) and filter by them; a question missed four or more times in a row is surfaced as a leech.
 
 ## Note format
 

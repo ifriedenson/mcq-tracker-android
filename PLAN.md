@@ -166,10 +166,36 @@ app/src/main/java/com/mcqtracker/android/
 
 Not part of the handoff's v1 scope; executes after v1 is green.
 
-- [ ] Search related Obsidian study plugins; for each **MIT-licensed** one, record: plugin name, plugin link, GitHub repo link, and the feature it has that MCQ Tracker lacks.
-- [ ] Add those features top-to-bottom while preserving MCQ Tracker's identity and the hard constraints (offline, no network, minimal deps).
+### 14.1 Research — MIT-licensed related plugins (done)
+
+Licenses verified from the GitHub REST API (`license.spdx_id`) on 2026-10-31, not from search snippets.
+
+| Plugin | Plugin link | GitHub repo | License | Feature it has that MCQ Tracker lacks |
+| --- | --- | --- | --- | --- |
+| Spaced Repetition | https://github.com/st3v3nmw/obsidian-spaced-repetition | https://github.com/st3v3nmw/obsidian-spaced-repetition | MIT | Inline `Question::Answer` / reversed `:::` / multi-line `?` flashcards, cloze deletions (`==highlight==`, bold), tag- and folder-based decks, whole-note review, media in cards |
+| Flashcards (Anki) | https://github.com/reuseman/flashcards-obsidian | https://github.com/reuseman/flashcards-obsidian | MIT | Two-way Anki sync through AnkiConnect, desktop-driven |
+| Incremental Writing | https://github.com/bjsi/incremental-writing | https://github.com/bjsi/incremental-writing | MIT | Priority-ranked incremental writing/review queues |
+| Yanki | https://github.com/kitschpatrol/yanki-obsidian | https://github.com/kitschpatrol/yanki-obsidian | MIT | Markdown-structure-driven mapping into Anki note types |
+| LearnKit | https://github.com/ctrlaltwill/LearnKit | https://github.com/ctrlaltwill/LearnKit | MIT | FSRS scheduling, cloze/basic/reversed/MCQ/image-occlusion cards, text-to-speech, heatmaps and retention analytics, note review mode |
+| Quiz Generator | https://github.com/ECuiDev/obsidian-quiz-generator | https://github.com/ECuiDev/obsidian-quiz-generator | MIT | Interactive quiz UI, matching/fill-in/short-answer types, saved question banks, import formats |
+| Recall | https://github.com/martin-jw/obsidian-recall | https://github.com/martin-jw/obsidian-recall | MIT | Spaced repetition for whole notes rather than questions |
+| Repeat | https://github.com/prncc/obsidian-repeat-plugin | https://github.com/prncc/obsidian-repeat-plugin | MIT | Periodic (calendar-based) note review |
+
+Not portable under this app's constraints (recorded, deliberately not implemented):
+
+- **Anki sync** (Flashcards, Yanki) needs a desktop Anki instance and AnkiConnect over HTTP — the app has no `INTERNET` permission by contract.
+- **AI question generation** (Quiz Generator) needs hosted models — same reason.
+
+### 14.2 Implementation batches
+
+- [x] **Batch 1 — flags and leeches.** Local flag toggle (never written to the note), `Flagged` filter, consecutive-miss detection with a `Leech` pill and a Progress-screen callout. Tests added.
+- [ ] **Batch 2 — cloze and basic flashcards.** Parse `==highlight==` cloze cards and `Question::Answer` cards from notes that do **not** carry `question_id`, as a separate question source that never disturbs MCQ Tracker notes.
+- [ ] **Batch 3 — text-to-speech.** Offline Android `TextToSpeech` for the prompt, stimulus and explanation (LearnKit parity).
+- [ ] **Batch 4 — 30-day activity heatmap** and retention trend (LearnKit analytics parity).
+- [ ] **Batch 5 — matching and fill-in grading** (Quiz Generator parity), keeping MCQ as the primary mode.
+- [ ] **Batch 6 — priority queues** (Incremental Writing parity) driven by existing error/miss data.
 - [ ] Keep attribution and license notices where MIT code is reused or merged.
-- [ ] Re-test and re-push after each feature batch.
+- [ ] Re-test and re-push after each batch.
 
 > Open conflict to resolve before Phase B: the handoff lists flashcards/cloze, calendar, AI, imports, Anki/CSV export, sync and FSRS as **out of scope for v1**. Phase B deliberately revisits that list; v1 constraints (no network, no INTERNET permission) still hold unless the user overrides them.
 

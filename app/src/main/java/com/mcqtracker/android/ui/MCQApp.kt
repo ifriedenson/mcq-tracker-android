@@ -2,6 +2,7 @@ package com.mcqtracker.android.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -252,7 +253,10 @@ fun TodayScreen(viewModel: AppViewModel) {
             )
         } else {
             preview.forEach { question ->
-                QuestionRow(question) { viewModel.practiseOne(question.key) }
+                QuestionRow(
+                    question = question,
+                    onClick = { viewModel.practiseOne(question.key) },
+                )
                 Spacer(Modifier.height(8.dp))
             }
         }
@@ -270,7 +274,11 @@ fun TodayScreen(viewModel: AppViewModel) {
 }
 
 @Composable
-fun QuestionRow(question: com.mcqtracker.android.data.Question, onClick: () -> Unit) {
+fun QuestionRow(
+    question: com.mcqtracker.android.data.Question,
+    onClick: () -> Unit,
+    onFlag: (() -> Unit)? = null,
+) {
     val progress = question.progress
     AppCard(onClick = onClick) {
         Row(
@@ -306,6 +314,22 @@ fun QuestionRow(question: com.mcqtracker.android.data.Question, onClick: () -> U
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                if (onFlag != null) {
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = if (progress.flagged) "★ Flagged" else "☆ Flag",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (progress.flagged) {
+                            MaterialTheme.colorScheme.secondary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable(onClick = onFlag)
+                            .padding(horizontal = 4.dp, vertical = 2.dp),
+                    )
+                }
             }
         }
         if (question.schedulerManaged) {
@@ -323,6 +347,7 @@ fun QuestionRow(question: com.mcqtracker.android.data.Question, onClick: () -> U
 fun StatusPill(question: com.mcqtracker.android.data.Question) {
     val today = LocalDate.now()
     when {
+        Stats.isLeech(question) -> Pill("Leech", MaterialTheme.colorScheme.error)
         Stats.isMissed(question) -> Pill("Missed", MaterialTheme.colorScheme.error)
         Stats.isDue(question, today) && !Stats.isNew(question) -> Pill("Due", MaterialTheme.colorScheme.primary)
         Stats.isNew(question) -> Pill("New", MaterialTheme.colorScheme.tertiary)
@@ -335,6 +360,7 @@ fun FilterRow(current: QuestionFilter, onSelect: (QuestionFilter) -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
             .padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {

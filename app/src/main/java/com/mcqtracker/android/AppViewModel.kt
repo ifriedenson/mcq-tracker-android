@@ -30,6 +30,7 @@ enum class QuestionFilter(val label: String) {
     DUE("Due"),
     NEW("New"),
     MISSED("Missed"),
+    FLAGGED("Flagged"),
 }
 
 enum class StorageStatus(val label: String) {
@@ -200,6 +201,17 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setFilter(filter: QuestionFilter) {
         state = state.copy(filter = filter)
+    }
+
+    /**
+     * Toggles a local flag only. `flagged` is never written back to the note:
+     * the handoff forbids rewriting the plugin's status properties.
+     */
+    fun toggleFlag(key: String) {
+        val question = state.questions.firstOrNull { it.key == key } ?: return
+        val updated = question.copy(progress = question.progress.copy(flagged = !question.progress.flagged))
+        store.save(updated.key, updated.progress)
+        state = state.copy(questions = state.questions.map { if (it.key == key) updated else it })
     }
 
     // ---- practice -------------------------------------------------------

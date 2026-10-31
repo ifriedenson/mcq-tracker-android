@@ -69,7 +69,11 @@ fun QuestionsScreen(viewModel: AppViewModel) {
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(visible, key = { it.key }) { question ->
-                    QuestionRow(question) { viewModel.practiseOne(question.key) }
+                    QuestionRow(
+                        question = question,
+                        onClick = { viewModel.practiseOne(question.key) },
+                        onFlag = { viewModel.toggleFlag(question.key) },
+                    )
                 }
                 item { Spacer(Modifier.height(20.dp)) }
             }
@@ -129,6 +133,15 @@ fun ProgressScreen(viewModel: AppViewModel) {
                 StatTile("Time", formatDuration(overview.timeSpent), Modifier.weight(1f))
                 StatTile("Streak", "${overview.streak}d", Modifier.weight(1f))
             }
+        }
+
+        if (overview.leeches > 0) {
+            Spacer(Modifier.height(10.dp))
+            Text(
+                text = "${overview.leeches} leech question(s): four or more misses in a row. Consider splitting the note or rewriting the explanation.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.error,
+            )
         }
 
         Spacer(Modifier.height(20.dp))
