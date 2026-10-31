@@ -37,6 +37,7 @@ import com.mcqtracker.android.StorageStatus
 import com.mcqtracker.android.data.Question
 import com.mcqtracker.android.data.QuestionMode
 import com.mcqtracker.android.data.Scheduler
+import com.mcqtracker.android.domain.SpeechText
 import kotlinx.coroutines.delay
 
 @Composable
@@ -127,6 +128,11 @@ fun PracticeScreen(viewModel: AppViewModel) {
             }
 
             Text(text = question.prompt, style = MaterialTheme.typography.titleLarge)
+            if (state.ttsEnabled) {
+                TextButton(onClick = { viewModel.speak(SpeechText.question(question)) }) {
+                    Text("Listen")
+                }
+            }
             Spacer(Modifier.height(12.dp))
 
             if (question.hint.isNotBlank()) {
@@ -226,6 +232,15 @@ fun PracticeScreen(viewModel: AppViewModel) {
                     canTag = !outcome.correct,
                     onTag = viewModel::tagError,
                 )
+                if (state.ttsEnabled) {
+                    TextButton(
+                        onClick = {
+                            viewModel.speak(
+                                SpeechText.result(question, outcome.correctAnswer, outcome.explanation),
+                            )
+                        },
+                    ) { Text("Listen to feedback") }
+                }
                 Spacer(Modifier.height(10.dp))
                 Button(onClick = viewModel::nextQuestion, modifier = Modifier.fillMaxWidth()) {
                     Text(if (position >= total) "See summary" else "Next question")

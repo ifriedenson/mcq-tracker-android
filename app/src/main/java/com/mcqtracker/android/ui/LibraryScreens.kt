@@ -305,6 +305,27 @@ fun SettingsScreen(viewModel: AppViewModel, onPickFolder: () -> Unit) {
 
         Spacer(Modifier.height(12.dp))
         AppCard {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(text = "Read aloud", style = MaterialTheme.typography.titleMedium)
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = "Uses your device's text-to-speech engine to read the prompt, choices and feedback. Offline — the app still has no network permission.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Spacer(Modifier.width(8.dp))
+                Switch(checked = state.ttsEnabled, onCheckedChange = viewModel::setTtsEnabled)
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+        AppCard {
             Text(text = "Compatibility", style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(6.dp))
             KeyValueRow("Question format", "MCQ Tracker frontmatter + sections")

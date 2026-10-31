@@ -80,6 +80,7 @@ data class UiState(
     val vaultUri: String? = null,
     val vaultLabel: String = "Sample vault",
     val writeBackEnabled: Boolean = false,
+    val ttsEnabled: Boolean = false,
     val readOnlyVault: Boolean = true,
     val loading: Boolean = false,
     val truncated: Boolean = false,
@@ -110,9 +111,14 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private val prefs = application.getSharedPreferences("mcq_tracker_settings", Context.MODE_PRIVATE)
 
     var state: UiState by mutableStateOf(
-        UiState(writeBackEnabled = prefs.getBoolean(KEY_WRITE_BACK, false)),
+        UiState(
+            writeBackEnabled = prefs.getBoolean(KEY_WRITE_BACK, false),
+            ttsEnabled = prefs.getBoolean(KEY_TTS, false),
+        ),
     )
         private set
+
+    private val speech = SpeechController(application)
 
     private var lastTickSecond = 0
 
@@ -186,6 +192,16 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun rescan() {
         val uri = state.vaultUri
         if (uri != null) openVault(Uri.parse(uri)) else loadSamples()
+    }
+
+    fun setTtsEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_TTS, enabled).apply()
+        if (!enabled) speech.stop()
+        state = state.copy(ttsEnabled = enabled)
+    }
+
+    fun speak(text: String) {
+        if (state.ttsEnabled) speech.speak(text)
     }
 
     fun setWriteBack(enabled: Boolean) {
@@ -506,8 +522,14 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         )
     }
 
+    override fun onCleared() {
+        speech.shutdown()
+        super.onCleared()
+    }
+
     companion object {
         private const val KEY_WRITE_BACK = "write_back_enabled"
         private const val KEY_VAULT_URI = "vault_uri"
+        private const val KEY_TTS = "tts_enabled"
     }
 }

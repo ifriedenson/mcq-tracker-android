@@ -140,6 +140,9 @@ fun CardPracticeScreen(viewModel: AppViewModel) {
             )
             Spacer(Modifier.height(8.dp))
             Text(text = card.front, style = MaterialTheme.typography.titleLarge)
+            if (state.ttsEnabled) {
+                TextButton(onClick = { viewModel.speak(card.front) }) { Text("Listen") }
+            }
         }
 
         Spacer(Modifier.height(14.dp))
