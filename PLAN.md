@@ -152,7 +152,7 @@ app/src/main/java/com/mcqtracker/android/
 - [x] JDK 17, Android SDK platform 35, build-tools 35.0.0, Gradle 8.9 installed in the sandbox.
 - [x] `local.properties` with the SDK path (gitignored).
 - [x] `./gradlew assembleDebug` produces `app/build/outputs/apk/debug/app-debug.apk` (9.3 MB).
-- [ ] Device/emulator run — **not possible here**: no emulator or physical device in this environment. Runtime behaviour (SAF picker, write-back against a real Obsidian vault) is therefore untested on hardware and must not be claimed as verified.
+- [ ] Device/emulator run — **not possible here**: no emulator or physical device in this environment. Composition and tap handling are now covered headlessly by `ComposeRenderTest` (Robolectric), but the SAF picker, TTS audio and write-back against a real Obsidian vault remain untested on hardware and must not be claimed as verified.
 
 ## 13. Deliverables
 
@@ -213,4 +213,5 @@ Not portable under this app's constraints (recorded, deliberately not implemente
 | 2026-10-31 | 6 | Green build: 56 tests, 0 failures, debug APK produced; README + CI added |
 | 2026-10-31 | 7 | Phase B research: 8 MIT plugins licence-verified via the GitHub API (§14.1); Anki-sync and AI plugins recorded as not portable under the no-network constraint |
 | 2026-10-31 | 8 | Batches 1–6 implemented and pushed (`af9b65f` … `0ec2f1c`); suite grew 56 → 83 tests, all green |
+| 2026-10-31 | 10 | Added Robolectric + Compose UI tests (`ComposeRenderTest`): real composition of `QuestionRow`, `StatusPill` and `FilterRow` on the JVM, including tap routing. Suite 83 → 86 tests |
 | 2026-10-31 | 9 | Lint pass (`lintDebug`): added an adaptive launcher icon with a monochrome layer and removed a redundant activity label. Seven warnings remain: six GradleDependency notices, deliberately not applied so the handoff's pinned versions stay put, and one `ObsoleteSdkInt` on `mipmap-anydpi-v26` — that qualifier is required by AAPT2 for `<adaptive-icon>` (moving it to `mipmap-anydpi` fails resource linking), so the warning is accepted rather than suppressed |
