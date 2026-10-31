@@ -94,6 +94,31 @@ object Stats {
                     .thenBy { it.questionId },
             )
 
+    data class UpcomingDay(val date: LocalDate, val count: Int)
+
+    /**
+     * Forward schedule for the next [days] days (Repeat parity). Overdue and
+     * never-seen questions are counted on [from], because that is when they
+     * should be reviewed.
+     */
+    fun upcoming(questions: List<Question>, from: LocalDate, days: Int = 14): List<UpcomingDay> {
+        val end = from.plusDays((days - 1).toLong())
+        val counts = mutableMapOf<LocalDate, Int>()
+        questions.filter { isQueueable(it, from) }.forEach { question ->
+            val next = question.progress.nextReview
+            val due = when {
+                isNew(question) || next == null -> from
+                next.isBefore(from) -> from
+                else -> next
+            }
+            if (!due.isAfter(end)) counts[due] = (counts[due] ?: 0) + 1
+        }
+        return (0 until days).map { offset ->
+            val date = from.plusDays(offset.toLong())
+            UpcomingDay(date, counts[date] ?: 0)
+        }
+    }
+
     fun overview(questions: List<Question>, today: LocalDate): Overview {
         val due = questions.count { isDue(it, today) }
         val fresh = questions.count { isNew(it) && isQueueable(it, today) }

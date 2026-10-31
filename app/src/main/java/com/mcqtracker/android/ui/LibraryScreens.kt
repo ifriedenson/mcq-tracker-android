@@ -262,6 +262,60 @@ fun ProgressScreen(viewModel: AppViewModel) {
         }
 
         Spacer(Modifier.height(20.dp))
+        SectionHeader(title = "Next 14 days")
+        Spacer(Modifier.height(8.dp))
+        AppCard {
+            val upcoming = Stats.upcoming(state.questions, today, 14)
+            val peak = upcoming.maxOfOrNull { it.count }?.coerceAtLeast(1) ?: 1
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                upcoming.chunked(7).forEach { week ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        week.forEach { day ->
+                            val alpha = if (day.count == 0) {
+                                0.08f
+                            } else {
+                                0.30f + 0.70f * (day.count.toFloat() / peak)
+                            }
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.weight(1f),
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(34.dp)
+                                        .clip(RoundedCornerShape(5.dp))
+                                        .background(MaterialTheme.colorScheme.primary.copy(alpha = alpha)),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    if (day.count > 0) {
+                                        Text(
+                                            text = day.count.toString(),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onPrimary,
+                                        )
+                                    }
+                                }
+                                Spacer(Modifier.height(2.dp))
+                                Text(
+                                    text = day.date.dayOfMonth.toString(),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "${upcoming.sumOf { it.count }} reviews due in the next 14 days (overdue and new count as today)",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        Spacer(Modifier.height(20.dp))
         SectionHeader(title = "Per-skill accuracy")
         Spacer(Modifier.height(8.dp))
         if (skills.isEmpty()) {

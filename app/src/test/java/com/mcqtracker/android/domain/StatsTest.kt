@@ -290,6 +290,37 @@ class StatsTest {
     }
 
     @Test
+    fun `upcoming schedule folds overdue and new questions into today`() {
+        val overdue = question(
+            "overdue",
+            progress = Progress(attempts = 2, correctCount = 1, nextReview = today.minusDays(3)),
+        )
+        val brandNew = question("brand-new")
+        val later = question(
+            "later",
+            progress = Progress(attempts = 2, correctCount = 2, nextReview = today.plusDays(3)),
+        )
+        val beyond = question(
+            "beyond",
+            progress = Progress(attempts = 2, correctCount = 2, nextReview = today.plusDays(30)),
+        )
+        val excluded = question(
+            "excluded",
+            status = "excluded",
+            progress = Progress(attempts = 2, nextReview = today.minusDays(1)),
+        )
+
+        val days = Stats.upcoming(listOf(overdue, brandNew, later, beyond, excluded), today, days = 7)
+
+        assertEquals(7, days.size)
+        assertEquals(today, days.first().date)
+        assertEquals(2, days.first().count)
+        assertEquals(0, days[1].count)
+        assertEquals(1, days[3].count)
+        assertEquals(3, days.sumOf { it.count })
+    }
+
+    @Test
     fun `scheduler management is detected from the property or existing state`() {
         assertTrue(Stats.isSchedulerManaged("fsrs", false))
         assertTrue(Stats.isSchedulerManaged("SM2", false))
