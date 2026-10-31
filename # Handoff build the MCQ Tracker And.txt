@@ -1,0 +1,460 @@
+# Handoff: build the MCQ Tracker Android companion
+
+You are starting in a blank GitHub repository. Build a standalone native Android app that is a companion to the "MCQ Tracker" Obsidian plugin. This is a fresh implementation; do not modify the plugin repository.
+
+## Context and references
+
+- Plugin repo: `ifriedenson/mcq-tracker` (MIT). If you have read access, use it only as a format reference.
+- Read the plugin's `README.md` section **"What counts as a question"** and the notes in `samples/sample-vault/Questions/`.
+- Useful source references:
+  - `src/notes.js` — section parsing, answer-key inference, `applyAttempt`.
+  - `src/answer-types.js` — choice-set and true/false key handling.
+  - `src/history.js` — history row format.
+  - `src/constants.js` — ladder intervals and error-type labels.
+  - `src/plugin.js` — question discovery (Markdown files with a `question_id`).
+- Do not copy plugin JavaScript into the app. Reimplement the format in Kotlin.
+- If the plugin repo is not accessible, the contract below is sufficient; do not stop to ask for it.
+
+## Non-negotiable constraints
+
+- Work only in the new repository. Never commit, push, or edit anything in `mcq-tracker`.
+- Offline and local-first. No INTERNET permission, no analytics, no accounts, no network calls.
+- No `.md` file containing a `question_id` property anywhere in this Android repository. The Obsidian plugin treats any vault Markdown note with `question_id` as a real question. Bundle sample questions with a non-Markdown extension such as `.qnote` (or embed them as Kotlin strings) and load those. Notes the user selects from their own vault remain normal `.md`.
+- Do not place this project inside the plugin repo or inside an Obsidian vault.
+- The app is unofficial. Title it "MCQ Tracker" / "MCQ Tracker for Android" with a clear "unofficial companion for the MCQ Tracker Obsidian plugin" disclaimer. Include the MIT license.
+- Keep dependencies minimal: AndroidX, Jetpack Compose Material 3, DocumentFile, JUnit. No Room, Hilt, Retrofit, Markdown renderer, or other runtime libraries unless absolutely necessary.
+
+## Product goal (v1)
+
+A fast, offline Android app that opens an Obsidian vault folder, finds MCQ Tracker question notes, lets the user practise them, schedules reviews with the plugin's default ladder, and writes compatible review state back to the notes.
+
+In scope:
+- Android Storage Access Framework folder picker, persisted read/write permission, recursive `.md` scan.
+- A bundled sample vault so the app is usable on first launch.
+- MCQ, select-all, true/false and self-graded questions.
+- Due/new/missed queues and single-question practice.
+- Confidence, automatic grading, explanation, hints, error tagging.
+- Plugin-compatible 1/3/7/21/60-day scheduling.
+- Optional write-back of review properties into note frontmatter.
+- Local progress mirror for sample notes, read-only notes and failed writes.
+- Today, Questions, Progress and Settings screens, plus practice/results summary.
+- Search/filter, streak, accuracy, last-7-days chart, per-skill accuracy.
+
+Out of scope for v1:
+- Flashcards/cards module, image occlusion, cloze.
+- Calendar, assignments, grades, exams, study plans.
+- AI, imports, PDF/OCR, Anki, CSV export, sync.
+- Native FSRS or SM-2 scheduling (see read-only policy below).
+- Numeric/SPR tolerance grading, matching, reorder. Treat these as self-graded.
+- Creating or editing question notes inside the app.
+- Flagging, burying, suspending or excluding items. Respect existing statuses; do not change them.
+- Process-death recovery for an in-progress timer.
+
+## Stack and project shape
+
+- Kotlin 2.0.21, AGP 8.7.3, Gradle 8.9, JDK 17.
+- compileSdk 35, targetSdk 35, minSdk 26.
+- Jetpack Compose with Material 3 (Compose BOM 2024.10.01 is a good starting point).
+- `androidx.activity:activity-compose`, lifecycle ViewModel, `androidx.documentfile`, JUnit 4.
+- Package: `com.mcqtracker.android` unless the user supplies a domain. Version 0.1.0 / versionCode 1.
+- Put the Gradle project at the repository root:
+  - `settings.gradle.kts`, `build.gradle.kts`, `gradle.properties`
+  - `app/build.gradle.kts`
+  - `app/src/main/...`
+  - `.gitignore` for `.gradle/`, `build/`, `local.properties`, `.idea/`, `*.iml`, `dist/`
+  - `README.md`, `LICENSE`
+- Generate and commit the Gradle wrapper.
+- The app must not request `android.permission.INTERNET`.
+
+## Note-format contract
+
+A question note is Markdown with YAML frontmatter. `question_id` is required. Example:
+
+```markdown
+---
+question_id: SAMPLE-001
+course: Sample Course
+skill: Reading
+difficulty: easy
+choices: 4
+answer: C
+target_seconds: 60
+---
+
+## Question
+
+In the sentence "The experiment was inconclusive, so the team repeated it," what does "inconclusive" most nearly mean?
+
+## Answer Choices
+
+- A. Dangerous
+- B. Expensive
+- C. Not decisive
+- D. Carefully planned
+
+## Answer
+
+> [!answer]- Reveal answer
+> **Correct Answer: C**
+>
+> Inconclusive means the results did not settle the question.
+```
+
+Read these properties:
+`question_id, course, test, section, domain, skill, difficulty, unit, question_type,
+answer, choices, target_seconds, stimulus_id, scheduler, study_status, known_until,
+attempts, correct_count, streak, next_review, result, last_confidence,
+last_error_type, time_spent_total, last_time_spent, flagged, history`.
+
+Section aliases (case-insensitive, strip `* _ \``):
+- Stimulus: `stimulus`, `passage`, `source`, `excerpt`, `reading`, `text`, `figure`
+- Question: `question`, `stem`, `prompt`
+- Hint: `hint`, `clue`
+- Choices: `answer choices`, `choices`, `options`, `answers choices`
+- Answer: `answer`, `answer key`, `correct answer`, `answer and rationale`, `solution`
+- Notes: `my notes`, `notes`
+
+Choices: lines like `- A. text`, `- A) text`, `- A: text`, optionally bolded. Support wrapped continuation lines. Letters A–H.
+
+Answer-key precedence:
+1. Frontmatter `answer`, `correct_answer`, `correct`, `answer_key`, `key`.
+2. Choice sets such as `A, C`, `A/C`, `A and C`, `AC` (normalize sorted, comma-separated).
+3. Single letter.
+4. `## Answer` text patterns: `Correct Answer: B`, `**Answer:** B`, `The correct answer is C`, `Correct Answers: A, C`, `Correct Answer: False`.
+5. Otherwise self-graded.
+
+Mode inference, matching the plugin:
+- `question_type` containing `spr`, `student-produced`, `grid-in`, `free-response`, `short-answer`, `numeric`, `fill` → self-graded.
+- `select_all`, `sata`, `multi-select`, `multi-answer`, `checkbox` → select-all.
+- `true_false`, `boolean`, `tf` → true/false.
+- `mcq`, `multiple`, `choice`, `select` → MCQ or select-all if the key is a set.
+- A set key → select-all; choices that are exactly True/False → true/false; a full-word True/False key with no choices → true/false; a single letter → MCQ.
+- No key → self-graded.
+- If MCQ/select-all has fewer than two choices, downgrade to self-graded rather than showing an unanswerable screen.
+
+Normalize:
+- MCQ key to uppercase.
+- Select-all key to sorted `A, C`.
+- True/false key to canonical `True` or `False`, mapping letters through the note's own choices.
+- Self-graded keeps the raw key for display.
+
+Also:
+- If `## Stimulus` is absent but `stimulus_id` is present, borrow the stimulus from another loaded note with the same `stimulus_id`.
+- Read `study_status`: `excluded` and `suspended` are never queued; `known` is queued only when `known_until` is today or earlier. Do not rewrite these statuses.
+- Strip Markdown to readable plain text for display. Do not attempt LaTeX/MathJax rendering in v1.
+
+## Grading contract
+
+- MCQ: chosen letter equals key, case-insensitive.
+- Select-all: exact set equality. Missing or extra choices are wrong.
+- True/false: compare canonical values, mapping letter keys through choices.
+- Self-graded: user taps "I got it right" or "I got it wrong"; the history answer field is empty.
+- Confidence labels: 1 = Guessing, 2 = Unsure, 3 = Confident. Default 2.
+
+## Scheduling contract (exact)
+
+Intervals: `[1, 3, 7, 21, 60]` days.
+
+On submit:
+
+```text
+conf = clamp(confidence, 1, 3)
+if correct:
+    streak = (conf == 1) ? previousStreak : previousStreak + 1
+    intervalDays = (conf == 1)
+        ? 2
+        : intervals[min(max(streak, 1) - 1, 4)]
+else:
+    streak = 0
+    intervalDays = 1
+
+next_review = localToday + intervalDays
+attempts += 1
+correct_count += (correct ? 1 : 0)
+time_spent_total += seconds
+last_time_spent = seconds
+last_result = correct ? "correct" : "incorrect"
+last_confidence = conf
+last_error_type = ""
+```
+
+This means: first correct → 1 day, second → 3, third → 7, fourth → 21, fifth and later → 60. A correct guess (confidence 1) returns in 2 days and does not advance the streak. A miss returns tomorrow and resets the streak.
+
+## Write-back contract
+
+Only write when all are true:
+- The user enabled write-back.
+- The note came from an SAF file (not the bundled sample).
+- `scheduler` is not `fsrs` and not `sm2` (and `srs` / `sm2` state should be treated as scheduler-managed even if the scheduler property is missing).
+
+Write these top-level properties, preserving the note body and line endings:
+
+- `result`: `correct` or `incorrect`
+- `date attempted`: `yyyy-MM-dd'T'HH:mm` (local, minutes)
+- `first_attempted`: set only if missing or empty; same format
+- `attempts`: integer
+- `correct_count`: integer
+- `streak`: integer
+- `time_spent_total`: integer seconds
+- `last_time_spent`: integer seconds
+- `last_answer`: chosen letter(s), or empty for self-graded
+- `last_confidence`: 1–3
+- `last_error_type`: empty after an attempt; tag value after an error tag
+- `next_review`: `yyyy-MM-dd`
+- `last_attempt_id`: UUID
+- `history`: list of rows
+
+Do not modify `srs`, `sm2`, `scheduler`, `flagged`, `study_status`, or the note body. Do not write these fields into FSRS/SM-2 notes.
+
+History row format:
+
+```text
+yyyy-MM-dd'T'HH:mm:ss|correct|seconds|chosen|confidence|error_type|attempt_id
+```
+
+- `result` is `correct` or `incorrect` (skips are not implemented in v1).
+- Replace `|`, newlines and carriage returns inside `chosen` with `/` or a space.
+- Append only if the same attempt ID is not already present.
+- Preserve any optional eighth `variant` field on existing rows; never drop it.
+- Parse and preserve existing rows, including quoted YAML list entries.
+- On a write, replace the whole `history` list with the local list, but only after verifying the note has not changed externally.
+
+Error tags must use the plugin's exact values:
+`careless`, `content gap`, `misread`, `ran out of time`, `guessed`.
+
+## Write safety
+
+Before writing:
+1. Re-read the note from SAF.
+2. Compare a content signature (or last-modified time) with the version loaded into memory.
+3. If it changed, abort the write and keep progress locally; show a message that the note was changed elsewhere.
+4. Write once, with `openOutputStream(uri, "wt")`. On failure, keep local progress and tell the user the note was not updated.
+
+Do not silently overwrite concurrent Obsidian edits. Do not add backups inside the vault unless the user asks. Default write-back to **off** on first launch; let the user enable it in Settings after explaining what is written. Show clear state after each answer: "Saved to note", "Saved in app only", or "Note changed elsewhere — saved in app only".
+
+## Local progress
+
+Store a local mirror of every question's progress in SharedPreferences as JSON, keyed by `sourceKey::question_id`:
+- `sourceKey` = `"sample"` or the SAF tree URI.
+- Store attempts, correct count, streak, next review, last result, last confidence, last error type, seconds, history, flagged.
+
+On load, merge the note and local copy:
+- Prefer the local copy if it has more attempts.
+- If attempts are equal, prefer the one with more history rows.
+- If attempts and history are equal, prefer a non-empty local error tag over an empty note tag.
+- Otherwise use the note.
+
+FSRS/SM-2 notes are read-only: keep their progress locally so due reviews still work in the app, but never write those notes.
+
+## Architecture and file map
+
+Use this structure (or equivalent):
+
+```text
+app/src/main/java/com/mcqtracker/android/
+  MainActivity.kt              // Compose host + SAF folder picker + persisted permission
+  AppViewModel.kt              // UiState, screens, queues, submit, error tags, write-back
+  data/
+    Model.kt                   // Question, Choice, Progress, QuestionMode
+    NoteParser.kt              // frontmatter + sections + answer key + mode inference
+    NoteWriter.kt              // compatible frontmatter/history updates
+    Scheduler.kt               // ladder + history rows + error tags
+    MarkdownLite.kt            // Markdown-to-plain-text display helper
+    ProgressStore.kt           // SharedPreferences JSON mirror
+    VaultRepository.kt         // sample assets, SAF scan, merge, write
+  domain/
+    AnswerTypes.kt             // choice sets, true/false normalization
+    AnswerGrader.kt            // grading + correct choice letters/labels
+    Stats.kt                   // due/new/missed, accuracy, streak, 7 days, skills
+  ui/
+    Theme.kt                   // custom paper/ink palette, serif headings, dark mode
+    Components.kt              // shared cards, pills, headers, formatting
+    MCQApp.kt                  // scaffold, bottom tabs, Today screen
+    PracticeScreen.kt          // question, choices, confidence, result, error tags
+    LibraryScreens.kt          // Questions, Progress, Settings, Summary
+```
+
+Key behavior:
+- `MainActivity`: `ActivityResultContracts.OpenDocumentTree`, take persisted read/write permission with a read-only fallback, open the ViewModel's vault.
+- `VaultRepository`: recursively scan SAF tree for `.md`, skip dot directories, cap at 4,000 files and 2 MB per note. Parse only notes with non-empty `question_id`.
+- Use `Dispatchers.IO` for file work. Never block the main thread.
+- `Question.key = "$sourceKey::$questionId"`.
+- Keep raw note text in the Question until write-back.
+- After a successful write, update the in-memory raw text and progress.
+- `SourceKey` for sample = `sample`.
+
+## Screens and visual direction
+
+Custom Material 3 theme: warm paper background, deep indigo primary, amber secondary, green success/tertiary, red error. Serif display/headline type, clean body type. Support light and dark.
+
+1. Today
+   - App title + current vault pill.
+   - Sample-vault notice when applicable.
+   - Hero card: due + new count, "Start practice", clear empty state.
+   - Three stat tiles: streak, accuracy, attempts.
+   - Practice all / Missed questions actions.
+   - First three questions from the bank + Browse all.
+   - Read-only FSRS/SM-2 count note.
+
+2. Practice (full screen)
+   - Close button, question x of n, topic, elapsed timer, target-time indicator.
+   - Progress bar.
+   - Stimulus card, question text, optional hint toggle, choices.
+   - Confidence chips before submitting.
+   - Self-graded mode: "I got it wrong" / "I got it right".
+   - Submit disabled until a pick exists.
+   - Result card: correct/incorrect, correct answer, explanation, next-review date and interval, storage status, optional error-tag chips.
+   - Next / See summary button.
+
+3. Summary
+   - Accuracy ring, correct count, total time, average time.
+   - Missed questions list, tap to practise one.
+   - Back to Today / Review misses.
+
+4. Questions
+   - Search by prompt, ID, skill, course, domain, section, test.
+   - Filters: All, Due, New, Missed.
+   - Rows show topic, title, status pill, accuracy/attempts, FSRS marker.
+   - Tap to practise one.
+
+5. Progress
+   - Accuracy hero, study days, logged time, streak.
+   - Last-7-days bar chart.
+   - Per-skill accuracy bars.
+   - Empty state and local-only privacy note.
+
+6. Settings
+   - Vault source, choose folder, rescan, use sample vault.
+   - Write-back switch with a plain-language explanation and warning.
+   - Compatibility, scheduling, privacy sections.
+   - About/version/unofficial disclaimer.
+
+## Sample vault and plugin isolation
+
+- Bundle four original sample questions in `app/src/main/assets/sample-vault/Questions/` using the `.qnote` extension (or Kotlin constants). Do not use `.md`.
+- Update the sample loader to read `.qnote`.
+- Keep the sample content equivalent to the plugin's MIT-licensed sample notes if accessible: a reading meaning question, a linear equation, a cell organelle, and a pH calculation. If not accessible, write four original equivalents.
+- Immediately after creating assets, verify:
+  - `find . -name '*.md'` contains no file with frontmatter `question_id`.
+  - `grep -rl '^question_id:' app/src/main/assets` returns nothing.
+- Why this matters: the Obsidian plugin discovers every Markdown file in a vault and treats non-empty `question_id` as a question. It has no global folder-ignore that would protect a stray sample note. The plugin's build/release only reads `src/` and publishes `main.js`, `manifest.json`, `styles.css`, so the Android project cannot enter a release — but Markdown question fixtures inside a vault are still discoverable.
+- Do not add any prompt/README file at the Android repo root containing a frontmatter `question_id`.
+
+## Tests (write these before the UI is finished)
+
+JVM unit tests for pure logic:
+
+1. Parser
+   - Documented sample note: id, mode, key C, four choices, explanation, target seconds.
+   - Section aliases and bold/list choices.
+   - Answer only in `## Answer`.
+   - Select-all key `A, C` and `A/C`.
+   - True/false key as word and as letter through choices; no-choice true/false.
+   - Self-graded SPR/numeric note.
+   - Progress properties and history list parsing.
+   - Borrowed stimulus by `stimulus_id`.
+   - Malformed/missing frontmatter returns null.
+   - Markdown cleanup removes callouts, links, images and bold markers.
+
+2. Grader
+   - MCQ, select-all exact-set behavior, true/false custom labels, self-grade.
+   - Correct choice letters and labels.
+
+3. Scheduler
+   - First/second/third correct intervals 1/3/7; fifth+ 60.
+   - Correct guess → 2 days, streak unchanged.
+   - Miss → 1 day, streak 0.
+   - Confidence clamping.
+   - Exact history row and date formats.
+   - Error tag updates only the matching attempt, preserving other rows.
+
+4. Note writer
+   - Body preserved.
+   - Scalar fields updated; `first_attempted` preserved when present.
+   - History appended once, no duplicate attempt ID, quoted list entries.
+   - Error tag written into the matching row and `last_error_type`.
+   - Existing FSRS/SM-2/unknown properties untouched.
+   - CRLF and trailing newline preservation (or document the exact behavior).
+   - Note with no frontmatter gets a valid one.
+
+5. Stats
+   - Due/new/missed counts, accuracy, streak across today/yesterday, last-7-days counts, per-skill accuracy.
+
+6. Repository/sample
+   - Loading the `.qnote` assets produces four questions.
+   - If practical, a fake SAF source for merge behavior; otherwise keep merge as a pure function and test that.
+
+Run `./gradlew testDebugUnitTest` before building.
+
+## Build and verify
+
+- Install JDK 17, Android SDK platform 35 and build-tools 35.0.0, Gradle 8.9.
+- Create `local.properties` with the SDK path for local builds; keep it gitignored.
+- Build:
+  - `./gradlew testDebugUnitTest`
+  - `./gradlew assembleDebug`
+- APK: `app/build/outputs/apk/debug/app-debug.apk`.
+- If a device/emulator is available, install the APK and manually test:
+  - Sample vault loads and practices.
+  - SAF folder picker works and survives app restart.
+  - A note is discovered only with `question_id`.
+  - Answering writes the expected properties and history.
+  - FSRS/SM-2 note is not written.
+  - A failed write keeps progress locally.
+- If no device is available, state that clearly; do not claim runtime testing.
+
+## Repository setup and deliverables
+
+- Put the Gradle project at the repo root, not nested under `android/`.
+- Add `.gitignore`, `README.md`, `LICENSE` (MIT) and a short NOTICE if needed.
+- README must cover: features, supported note format, how to choose a vault, write-back behavior and risks, FSRS/SM-2 read-only policy, privacy/no network, build steps, test command, limitations, and the unofficial disclaimer.
+- Include a CI workflow that runs `./gradlew testDebugUnitTest assembleDebug` on push/pull request and uploads the debug APK as an artifact. Use Temurin 17 and `android-actions/setup-android`.
+- Deliverables: a buildable debug APK, passing unit tests, README, and no changes to `mcq-tracker`.
+
+## Defaults and open decisions
+
+Choose these defaults and continue without blocking:
+- App name: "MCQ Tracker" / "MCQ Tracker for Android", unofficial.
+- Package: `com.mcqtracker.android` until the user provides one.
+- Write-back default: off on first launch for safety; user can enable it.
+- Scheduler: ladder only. FSRS/SM-2 notes are read-only.
+- Cards, calendar, AI: not in v1.
+- Play Store: not yet; sideloaded debug/release APK first.
+- License: MIT, with the app's copyright held by the repository owner; attribute the plugin as the format reference.
+
+If a genuine blocker appears (e.g. no access to the plugin repo and the embedded contract is insufficient), ask one focused question. Otherwise proceed.
+
+## First actions
+
+1. Inspect the blank repo and confirm it is empty.
+2. Scaffold the Gradle/Compose project and confirm a trivial debug build.
+3. Implement and test the parser, grader, scheduler, writer and stats.
+4. Add the `.qnote` sample assets and isolation check.
+5. Implement the repository, ViewModel and screens.
+6. Run unit tests and assemble the APK.
+7. Write the README and CI.
+8. Report exactly what was built, what was tested, and what could not be tested on a device.
+
+
+Your overall way that you work in a cycle:
+1. Go through plan.md from top to bottom, and implement anything not implemented yet.
+2. Update plan,md
+3. Test what was implemented.
+4. Update plan.md and push and put everything on github fully on the main spot on githuhb
+5. Repeat 1-4 unitl plan.md is fully implemented
+6. test
+7. Repeatg 1-6 until there are no bugs
+8. Research related plugins with MIT licenses. For every related plugin that has an MIT license, add it to plan.md with a link to it, to its github repo, and what feature it has that our plugin does not. update plan.md
+9. Using these related plugins, add, starting from top to bottom in out plan.md file the features that each plugin has to our MCQ Tracker plugin if our plugin does not currently have them and keep MCQ TRacker's idea the same. 
+10. Test. 
+11. Fiz bugs. Implement every stuidy obsidian plugin feature that exists and use the mit repos to help you copy or merge their code into ours to make new modules if neccessary.
+
+12. Continue this loop untilo you have finisehd everything in plan.md
+1. Go through plan.md from top to bottom, and implement anything not implemented yet.
+2. Update plan,md
+3. Test what was implemented.
+4. Update plan.md and push and put everything on github fully on the main spot on githuhb
+5. Repeat 1-4 unitl plan.md is fully implemented
+6. test
+7. Repeatg 1-6 until there are no bugs
+
